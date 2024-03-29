@@ -20,13 +20,13 @@ procedure Main is
    function find_min(start_index, finish_index : in Integer) return Integer is
    min : Integer := arr(start_index);
    indexMin : Integer := start_index;
-   found : Boolean := False; -- Flag to indicate if minimum index is found
+   found : Boolean := False;
 begin
    for i in start_index..finish_index loop
       if min > arr(i) then
          min := arr(i);
          indexMin := i;
-         if not found then -- Display index only if it's the first occurrence
+         if not found then
             Put_Line("Minimum value found at index: " & indexMin'Img);
             found := True;
          end if;
@@ -66,7 +66,7 @@ end find_min;
 
    task body main_thread is
    min : Integer := 0;
-   indexMin : Integer := 0;  -- Initialize indexMin
+   indexMin : Integer := 0;
    start_index, finish_index : Integer;
 begin
    accept start(start_index, finish_index : in Integer) do
@@ -76,7 +76,7 @@ begin
    min := find_min(start_index  => start_index,
                    finish_index => finish_index);
    indexMin := start_index;  -- Set indexMin to start_index
-   part_manager.set_find_min(min, indexMin);  -- Pass indexMin to part_manager
+   part_manager.set_find_min(min, indexMin);
 end main_thread;
 
 
