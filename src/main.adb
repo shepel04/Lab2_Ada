@@ -1,13 +1,13 @@
 with Ada.Text_IO; use Ada.Text_IO;
-with Ada.Numerics.Discrete_Random;
 with Ada.Calendar; use Ada.Calendar;
 
 procedure Main is
 
-   array_size : constant Long_Long_Integer := 200000;
-   thread_num : constant Long_Long_Integer := 4;
-   index_random: Long_Long_Integer := 4444;
-   arr : array(0..array_size) of Long_Long_Integer;
+   array_size : constant Integer := 200000;
+   thread_num : constant Integer := 4;
+   index_random: Integer := 4444;
+   indexMinAll: Integer := 0;
+   arr : array(0..array_size) of Integer;
 
    procedure Init_Arr is
    begin
@@ -17,83 +17,97 @@ procedure Main is
       arr(index_random):=arr(index_random)*(-1);
    end Init_Arr;
 
-   function find_min(start_index, finish_index : in Long_Long_Integer) return Long_Long_Integer is
-      min : Long_Long_Integer := arr(start_index);
-   begin
-      for i in start_index..finish_index loop
-         if(min>arr(i)) then
-            min:=arr(i);
+   function find_min(start_index, finish_index : in Integer) return Integer is
+   min : Integer := arr(start_index);
+   indexMin : Integer := start_index;
+   found : Boolean := False; -- Flag to indicate if minimum index is found
+begin
+   for i in start_index..finish_index loop
+      if min > arr(i) then
+         min := arr(i);
+         indexMin := i;
+         if not found then -- Display index only if it's the first occurrence
+            Put_Line("Minimum value found at index: " & indexMin'Img);
+            found := True;
          end if;
-      end loop;
-      return min;
-   end find_min;
+      end if;
+   end loop;
+   return min;
+end find_min;
 
    task type main_thread is
-      entry start(start_index, finish_index : in Long_Long_Integer);
+      entry start(start_index, finish_index : in Integer);
    end main_thread;
 
    protected part_manager is
-      procedure set_find_min(min : in Long_Long_Integer);
-      entry get_min(min2 : out Long_Long_Integer);
+      procedure set_find_min(min, index : in Integer);
+      entry get_min(min2, index : out Integer);
    private
-      tasks_count : Long_Long_Integer := 0;
-      min1 : Long_Long_Integer := arr(1);
+      tasks_count : Integer := 0;
+      min_value : Integer := arr(1);
+      min_index : Integer := 1;
    end part_manager;
 
    protected body part_manager is
-      procedure set_find_min(min : in Long_Long_Integer) is
+      procedure set_find_min(min, index : in Integer) is
       begin
-         if (min1>min) then
-            min1 :=min;
+         if min_value > min then
+            min_value := min;
+            min_index := index;
          end if;
          tasks_count := tasks_count + 1;
       end set_find_min;
-      entry get_min(min2 : out Long_Long_Integer) when tasks_count = thread_num is
+      entry get_min(min2, index : out Integer) when tasks_count = thread_num is
       begin
-         min2 := min1;
+         min2 := min_value;
+         index := min_index;
       end get_min;
-
-
    end part_manager;
 
    task body main_thread is
-      min : Long_Long_Integer := 0;
-      start_index, finish_index : Long_Long_Integer;
-   begin
-      accept start(start_index, finish_index : in Long_Long_Integer) do
-         main_thread.start_index := start_index;
-         main_thread.finish_index := finish_index;
-      end start;
-      min := find_min(start_index  => start_index,
-                      finish_index => finish_index);
-      part_manager.set_find_min(min);
-   end main_thread;
+   min : Integer := 0;
+   indexMin : Integer := 0;  -- Initialize indexMin
+   start_index, finish_index : Integer;
+begin
+   accept start(start_index, finish_index : in Integer) do
+      main_thread.start_index := start_index;
+      main_thread.finish_index := finish_index;
+   end start;
+   min := find_min(start_index  => start_index,
+                   finish_index => finish_index);
+   indexMin := start_index;  -- Set indexMin to start_index
+   part_manager.set_find_min(min, indexMin);  -- Pass indexMin to part_manager
+end main_thread;
 
-   function parallel_sum return Long_Long_Integer is
-      min : Long_Long_Integer := 0;
+
+   function parallel_sum return Integer is
+      min : Integer := 0;
+      index : Integer := 0;
       thread : array(1..thread_num) of main_thread;
-      len : Long_Long_Integer:= array_size/thread_num;
+      len : Integer := array_size/thread_num;
    begin
-      for i in  1..thread_num-1 loop
+      for i in 1..thread_num-1 loop
          thread(i).start((i-1)*len,i*len);
 
       end loop;
       thread(thread_num).start(len*(thread_num-1), array_size);
-      part_manager.get_min(min);
+      part_manager.get_min(min, index);
+
       return min;
    end parallel_sum;
-   time :Ada.Calendar.Time := Clock;
-   finish_time :Duration;
-   rezult:Long_Long_Integer;
+
+   time : Ada.Calendar.Time := Clock;
+   finish_time : Duration;
+   result : Integer;
 begin
    Init_Arr;
-   time:=Clock;
-   rezult:=find_min(0, array_size);
-   finish_time:=Clock-time;
-   Put_Line(rezult'img &" one thread time: " & finish_time'img & " seconds");
-   time:=Clock;
-   rezult:=parallel_sum;
-   finish_time:=Clock-time;
-   Put_Line(rezult'img &" more thread time: " & finish_time'img & " seconds");
-end Main;
+   time := Clock;
+   result := find_min(0, array_size);
+   finish_time := Clock - time;
+   Put_Line(result'Img & " one thread time: " & finish_time'Img & " seconds");
 
+   time := Clock;
+   result := parallel_sum;
+   finish_time := Clock - time;
+   Put_Line(result'Img & " more thread time: " & finish_time'Img & " seconds");
+end Main;
